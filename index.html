@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lymphatic System Jeopardy</title>
+<style>
+:root{--blue:#102d73;--blue2:#1747a5;--gold:#ffd85a;--white:#fff;--panel:#f4f7ff}
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(135deg,#071a4c,#153d91);color:white;min-height:100vh}
+header{text-align:center;padding:22px 14px 12px}
+h1{margin:0;color:var(--gold);font-size:clamp(1.7rem,4vw,3rem);letter-spacing:1px}
+header p{margin:8px 0 0;color:#e3eaff}
+.topbar{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:12px auto 18px;padding:0 12px}
+.team{background:#fff;color:#12265a;border-radius:10px;padding:10px 12px;display:flex;align-items:center;gap:8px;font-weight:bold}
+.team input{width:105px;border:1px solid #ccd4e7;border-radius:5px;padding:6px;font-weight:600}
+.team button{border:0;background:#e8edfb;border-radius:5px;padding:6px 9px;cursor:pointer}
+#board{display:grid;grid-template-columns:repeat(5,minmax(125px,1fr));gap:7px;max-width:1400px;margin:0 auto;padding:0 12px 20px}
+.category{background:#173f91;border:2px solid #7195e8;border-radius:8px;min-height:94px;display:flex;align-items:center;justify-content:center;text-align:center;padding:10px;font-weight:900;text-transform:uppercase;line-height:1.2;font-size:clamp(.85rem,1.5vw,1.15rem)}
+.tile{min-height:95px;border:2px solid #4e75d2;background:#0d2c72;border-radius:8px;color:var(--gold);font-weight:900;font-size:clamp(1.4rem,2.7vw,2.2rem);cursor:pointer;transition:transform .12s,background .12s}
+.tile:hover{background:#2453b6;transform:scale(1.025)}
+.tile.used{background:#091b46;color:#53648c;border-color:#1b2d5b;cursor:default;transform:none}
+footer{text-align:center;color:#dbe5ff;font-size:.9rem;padding:0 15px 24px}
+#modal{position:fixed;inset:0;background:#02091ddd;display:none;align-items:center;justify-content:center;padding:18px;z-index:10}
+#modal.show{display:flex}
+.dialog{width:min(850px,100%);background:var(--panel);color:#14234b;border-radius:18px;padding:clamp(22px,5vw,42px);text-align:center;box-shadow:0 20px 70px #0008}
+.dialog .category-label{color:#3155a5;text-transform:uppercase;font-size:.9rem;font-weight:bold;letter-spacing:1px}
+#points{font-size:1.2rem;color:#9b7200;font-weight:bold;margin:10px}
+#clue{font-size:clamp(1.35rem,3.2vw,2.2rem);line-height:1.35;margin:22px 0;white-space:pre-wrap}
+#answer{display:none;border-top:2px solid #d7deef;margin-top:18px;padding-top:18px;font-size:clamp(1.1rem,2.4vw,1.55rem);line-height:1.4;font-weight:bold;color:#174080}
+.actions{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:22px}
+.actions button{border:0;border-radius:9px;padding:12px 17px;font-weight:bold;font-size:1rem;cursor:pointer}
+.primary{background:#1747a5;color:white}.secondary{background:#e1e8fa;color:#17295a}.correct{background:#167447;color:white}.wrong{background:#a83232;color:white}
+@media(max-width:800px){#board{grid-template-columns:repeat(5,minmax(95px,1fr));gap:4px;padding:0 6px 15px}.category{font-size:.72rem;padding:5px;min-height:82px}.tile{min-height:75px}.team{padding:7px;font-size:.9rem}.team input{width:75px}}
+@media(max-width:560px){#board{grid-template-columns:repeat(5,minmax(60px,1fr))}.category{font-size:.6rem;overflow-wrap:anywhere;min-height:76px}.tile{min-height:65px;font-size:1.1rem}}
+</style>
+</head>
+<body>
+<header>
+  <h1>LYMPHATIC SYSTEM JEOPARDY</h1>
+  <p>Grade 8 Science • Pick a category and point value</p>
+</header>
+<div class="topbar" id="teams">
+  <div class="team"><label for="name1">Team 1</label><input id="name1" value="Team 1" aria-label="Team 1 name"><span id="score1">0</span><button onclick="changeScore(1,100)" title="Add 100 points">+100</button><button onclick="changeScore(1,-100)" title="Subtract 100 points">−100</button></div>
+  <div class="team"><label for="name2">Team 2</label><input id="name2" value="Team 2" aria-label="Team 2 name"><span id="score2">0</span><button onclick="changeScore(2,100)" title="Add 100 points">+100</button><button onclick="changeScore(2,-100)" title="Subtract 100 points">−100</button></div>
+</div>
+<main id="board" aria-label="Jeopardy game board"></main>
+<footer>Click a point value to see the clue. Reveal the answer, award points, then close the clue.</footer>
+<div id="modal" role="dialog" aria-modal="true" aria-labelledby="clue">
+ <div class="dialog">
+  <div class="category-label" id="modalCategory"></div>
+  <div id="points"></div>
+  <div id="clue"></div>
+  <div id="answer"></div>
+  <div class="actions">
+   <button class="primary" id="revealBtn" onclick="revealAnswer()">Reveal answer</button>
+   <button class="correct" onclick="award(1)">Team 1 correct + points</button>
+   <button class="wrong" onclick="award(2)">Team 2 correct + points</button>
+   <button class="secondary" onclick="closeModal()">Close clue</button>
+  </div>
+ </div>
+</div>
+<script>
+const categories = [
+ {name:"Main Components", clues:[
+  ["These small, bean-shaped structures filter lymph fluid.","What are lymph nodes?"],
+  ["These tubes carry lymph fluid around the body.","What are lymphatic vessels?"],
+  ["This organ filters blood and removes old red blood cells.","What is the spleen?"],
+  ["This organ helps T cells mature so they can fight infections.","What is the thymus?"],
+  ["These tissues near the throat and nose help trap incoming germs.","What are the tonsils and adenoids?"]
+ ]},
+ {name:"Lymph & Vessels", clues:[
+  ["This clear fluid travels through the lymphatic system.","What is lymph?"],
+  ["Lymphatic vessels eventually return lymph to this part of the circulatory system.","What is the bloodstream?"],
+  ["Lymph contains these cells that help the body fight infections.","What are white blood cells?"],
+  ["Lymphatic vessels return this excess fluid from body tissues to the blood.","What is excess tissue fluid?"],
+  ["What can happen if lymphatic drainage becomes blocked?","What is swelling caused by fluid buildup?"]
+ ]},
+ {name:"Immune System", clues:[
+  ["This body system protects you against germs and diseases.","What is the immune system?"],
+  ["These blood cells help the body fight infections.","What are white blood cells?"],
+  ["These harmful microorganisms can cause infections.","What are pathogens?"],
+  ["These special white blood cells mature in the thymus.","What are T cells?"],
+  ["Why can lymph nodes swell when you are sick?","Because immune cells become active as the body fights an infection."]
+ ]},
+ {name:"Organs & Functions", clues:[
+  ["This organ is located in the upper-left part of the abdomen.","What is the spleen?"],
+  ["The tonsils and adenoids help catch germs entering through these areas.","What are the nose and mouth?"],
+  ["Which lymphatic organ helps T cells mature?","What is the thymus?"],
+  ["Besides filtering blood, the spleen helps the body do this.","What is fighting infections?"],
+  ["Name two ways lymph nodes help the immune system.","They filter lymph and help immune cells detect and fight germs."]
+ ]},
+ {name:"Challenge Questions", clues:[
+  ["True or false: The lymphatic system helps protect you from infections.","What is true?"],
+  ["What fluid travels through lymphatic vessels?","What is lymph?"],
+  ["Name the five main components covered in this game.","Lymph nodes, lymphatic vessels, spleen, thymus, and tonsils and adenoids."],
+  ["How do the lymphatic and circulatory systems work together?","The lymphatic system returns excess tissue fluid to the bloodstream."],
+  ["Explain how lymph nodes, lymphatic vessels, and white blood cells work together.","Vessels carry lymph to lymph nodes, where the fluid is filtered and immune cells help detect and fight germs."]
+ ]}
+];
+let scores=[0,0], current=null;
+const board=document.getElementById('board');
+function buildBoard(){
+ board.innerHTML='';
+ categories.forEach((cat,ci)=>{
+  const heading=document.createElement('div');heading.className='category';heading.textContent=cat.name;board.appendChild(heading);
+ });
+ for(let ri=0;ri<5;ri++){
+  categories.forEach((cat,ci)=>{
+   const btn=document.createElement('button');btn.className='tile';btn.textContent=(ri+1)*100;btn.setAttribute('aria-label',cat.name+' '+((ri+1)*100)+' points');
+   btn.addEventListener('click',()=>openClue(ci,ri,btn));board.appendChild(btn);
+  });
+ }
+}
+function openClue(ci,ri,btn){
+ if(btn.classList.contains('used'))return;
+ current={ci,ri,btn,points:(ri+1)*100};
+ document.getElementById('modalCategory').textContent=categories[ci].name;
+ document.getElementById('points').textContent=current.points+' POINTS';
+ document.getElementById('clue').textContent=categories[ci].clues[ri][0];
+ document.getElementById('answer').textContent='Answer: '+categories[ci].clues[ri][1];
+ document.getElementById('answer').style.display='none';
+ document.getElementById('revealBtn').style.display='inline-block';
+ document.getElementById('modal').classList.add('show');
+}
+function revealAnswer(){document.getElementById('answer').style.display='block';document.getElementById('revealBtn').style.display='none'}
+function changeScore(team,amount){scores[team-1]=Math.max(0,scores[team-1]+amount);document.getElementById('score'+team).textContent=scores[team-1]}
+function award(team){
+ if(!current)return;
+ changeScore(team,current.points);
+ current.btn.classList.add('used');current.btn.textContent='—';
+ closeModal();
+}
+function closeModal(){
+ document.getElementById('modal').classList.remove('show');
+ if(current){current.btn.classList.add('used');current.btn.textContent='—';current=null}
+}
+document.getElementById('modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal()});
+buildBoard();
+</script>
+</body>
+</html>
